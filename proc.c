@@ -532,3 +532,91 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+
+int
+clone(void *stack, void (*func)(void *, void *), void *arg1, void *arg2) {
+  struct proc *new_proc;
+  struct proc *p = myproc();
+
+  if((new_proc = allocproc()) == 0) //process allocation
+    return -1;
+
+  new_proc->pgdir = p->pgdir;
+  new_proc->sz = p->sz;
+  new_proc->parent = p;
+  *new_proc->tf = *p->tf;  //copy process data to the new thread
+  
+  void * sarg1, *sarg2, *sret;
+
+  sret = stack + PGSIZE - 3 * sizeof(void *);
+  *(uint*)sret = 0xFFFFFFF; // push return address to stack
+
+  sarg1 = stack + PGSIZE - 2 * sizeof(void *);
+  *(uint*)sarg1 = (uint)arg1; //push first argument to stack
+
+  sarg2 = stack + PGSIZE - 1 * sizeof(void *);
+  *(uint*)sarg2 = (uint)arg2; //push second argument to stack
+
+  new_proc->tf->esp = (uint) stack; //put address of new stack in the stack pointer(ESP)
+  new_proc->threadstack = stack; //save address of stack
+  new_proc->tf->esp += PGSIZE - 3 * sizeof(void*);
+  new_proc->tf->ebp = new_proc->tf->esp; //set stack pointer to address
+  new_proc->tf->eip = (uint) func; //set instruction pointer to function
+  new_proc->tf->eax = 0; //set eax so fork returns 0 in the child
+
+  for(int i = 0; i < NOFILE; i++)
+    if(p->ofile[i])
+      new_proc->ofile[i] = filedup(p->ofile[i]);
+  new_proc->cwd = idup(p->cwd);
+  safestrcpy(new_proc->name, p->name, sizeof(p->name));
+  acquire(&ptable.lock);
+  new_proc->state = RUNNABLE;
+  release(&ptable.lock);
+  return new_proc->pid;
+} 
+
+int 
+join(int* pid, void **stack)
+{
+  struct proc *p;
+  int kids;
+  struct proc *procs = myproc();
+  acquire(&ptable.lock);
+  //check to see if any zombie childern
+  for(;;)
+  {
+    kids = 0;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) 
+    {
+
+      if(p->pid != *pid || p->parent != procs || p->pgdir != p->parent->pgdir)
+        continue;//check if a child thread
+        
+      kids = 1;
+      if(p->parent == procs && p->pid == *pid && p->state == ZOMBIE)
+      {
+        kfree(p->kstack);
+        p->kstack = 0;//remove zombie child thread from k_stack
+
+        p->pid = 0;
+        p->parent = 0;
+        p->name[0] = 0;
+        p->killed = 0;
+        p->state = UNUSED;
+        stack = p->threadstack;
+        p->threadstack = 0; //reset thread in process table
+
+        release(&ptable.lock);
+        return *pid;
+      }
+    }
+    if(!kids || procs->killed)
+    {
+      //if no child then don't wait
+      release(&ptable.lock);
+      return -1;
+    }
+    sleep(procs, &ptable.lock); //if child wait to exit
+  }
+}
