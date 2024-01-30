@@ -10,6 +10,7 @@
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
+  int exec_count[NPROC];
 } ptable;
 
 static struct proc *initproc;
@@ -91,6 +92,7 @@ found:
   p->is_thread = 0;
   p->par_id = i;
   p->id = i;
+  ptable.exec_count[p->id] = -1;
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -334,22 +336,43 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    int thread_run[NPROC] = {0};
-    // int thread_run = 0
+
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    {
+      if (p->state != RUNNABLE && p->state != SLEEPING)
+        continue;
+      if (p->id == p->par_id)
+        ptable.exec_count[p->id] = -1;
+    }
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    {
+      if (p->state != RUNNABLE)
+        continue;
+      if (p->id != p->par_id)
+      {
+        if (ptable.exec_count[p->par_id] == -1 || ptable.exec_count[p->id] < ptable.exec_count[p->par_id])
+          ptable.exec_count[p->par_id] = ptable.exec_count[p->id];
+      }
+    }
+    int proc_count[NPROC] = {0};
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
-       
-      if (p->is_thread == 1 && thread_run[p->par_id] == 1)
+
+      // cprintf("id: %d, par_id: %d, exe_count: %d, par_exe_count: %d\n", p->id, p->par_id, ptable.exec_count[p->id], ptable.exec_count[p->par_id]);       
+
+      if (p->is_thread == 1 && ptable.exec_count[p->id] > ptable.exec_count[p->par_id])
+        continue;
+
+      if (proc_count[p->par_id] == 1)
         continue;
 
       if (p->is_thread)
-        thread_run[p->par_id] = 1; 
+      {
+        ptable.exec_count[p->id]++; 
+        proc_count[p->par_id] = 1;
+      }
 
-      // if (p->is_thread == 1 && thread_run == 1)
-      //   continue;
-      // if (p->is_thread)
-      //   thread_run = 1;
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -596,6 +619,7 @@ clone(void *stack, void (*func)(void *, void *), void *arg1, void *arg2) {
   safestrcpy(new_proc->name, p->name, sizeof(p->name));
   acquire(&ptable.lock);
   new_proc->state = RUNNABLE;
+  ptable.exec_count[new_proc->id] = 0;
   release(&ptable.lock);
   return new_proc->pid;
 } 
@@ -628,6 +652,7 @@ join(int* pid, void **stack)
         p->name[0] = 0;
         p->killed = 0;
         p->is_thread = 0;
+        ptable.exec_count[p->id] = -1;
         p->par_id = p->id;
         p->state = UNUSED;
         *stack = p->stackptr;

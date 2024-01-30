@@ -46,6 +46,9 @@ int test1()
 
 // test2 data
 
+lock_t test2_lock;
+
+
 void test2_func(void *arg1, void *arg2)
 {
     char *thread_name = (char *)arg1;
@@ -54,14 +57,18 @@ void test2_func(void *arg1, void *arg2)
     {
         cnt++;
     }    
+
+    lock_acquire(&test2_lock);
     printf(1, "%s finished\n", thread_name);
+    lock_release(&test2_lock);
+
     exit();
 }
 
 int test2()
 {
     printf(1, "\n\ntest 2 started\n");
-
+    lock_init(&test2_lock);
     int pid1 = thread_create(&test2_func, (void *)"Thread1", (void *) 0);
     int pid2 = thread_create(&test2_func, (void *)"Thread2", (void *) 0);
     thread_join(pid2);

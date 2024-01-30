@@ -131,7 +131,7 @@ int thread_create(void (*func)(void *, void *), void* arg1, void* arg2)
 {
   void* stack;
   stack = malloc(PGSIZE);
-  return clone(func, arg1, arg2, stack);
+  return clone(stack, func, arg1, arg2);
 }
 
 int thread_join(int pid)
