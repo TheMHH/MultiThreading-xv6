@@ -135,6 +135,8 @@ int thread_create(void (*func)(void *, void *), void* arg1, void* arg2)
 
 int thread_join(int pid)
 {
-  void * stackPtr;
-  return join(&pid, &stackPtr);
+  void *stackPtr;
+  int status = join(&pid, &stackPtr);
+  free(stackPtr);
+  return status;
 }

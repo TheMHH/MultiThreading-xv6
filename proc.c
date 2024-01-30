@@ -6,7 +6,6 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-// #include "umalloc.c"
 
 struct {
   struct spinlock lock;
@@ -611,7 +610,7 @@ join(int* pid, void **stack)
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
-        // free(p->stackptr);
+        *stack = p->stackptr;
         release(&ptable.lock);
         return *pid;
       }
