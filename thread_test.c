@@ -168,7 +168,7 @@ int test4()
     {
         thread_join(thread_pid[i]);
     }
-    if (cnt > 2)
+    if (cnt > 1)
     {
         printf(1, "scheduler is not fair\n");
         return 0;

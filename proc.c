@@ -88,7 +88,7 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-
+  p->is_thread = 0;
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -332,9 +332,16 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
+    int thread_run = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
+       
+      if (p->is_thread == 1 && thread_run == 1)
+        continue;
+
+      if (p->is_thread)
+        thread_run = 1; 
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -570,6 +577,8 @@ clone(void *stack, void (*func)(void *, void *), void *arg1, void *arg2) {
   new_proc->tf->ebp = new_proc->tf->esp; //set stack pointer to address
   new_proc->tf->eip = (uint) func; //set instruction pointer to function
   new_proc->tf->eax = 0; //set eax so fork returns 0 in the child
+
+  new_proc->is_thread = 1;
 
   for(int i = 0; i < NOFILE; i++)
     if(p->ofile[i])
