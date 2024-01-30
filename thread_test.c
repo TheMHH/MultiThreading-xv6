@@ -25,7 +25,7 @@ void test1_func(void *arg1, void *arg2)
 
 void test1()
 {
-    printf(1, "test 1 started\n");
+    printf(1, "\n\ntest 1 started\n");
 
     int arr[] = {5, 4, 3, 2, 1};
     int pid = thread_create(&test1_func, (void *) arr, (void *) 0);
@@ -59,7 +59,7 @@ void test2_func(void *arg1, void *arg2)
 
 void test2()
 {
-    printf(1, "test 2 started\n");
+    printf(1, "\n\ntest 2 started\n");
 
     int pid1 = thread_create(&test2_func, (void *)"Thread1", (void *) 0);
     int pid2 = thread_create(&test2_func, (void *)"Thread2", (void *) 0);
@@ -73,6 +73,48 @@ void test2()
     }
     printf(1, "test 2 passed\n");
 
+}
+
+
+
+// test3 data
+
+lock_t lock;
+int counter;
+
+void test3_func(void *arg1, void *arg2)
+{
+    printf(1, "runnig Thread %d \n", *(int *) arg1);
+    for (int i = 0; i < 1000; i++)
+    {
+        lock_acquire(&lock);
+        counter++;
+        // printf(1, "\ncounter is %d\n", counter);
+        lock_release(&lock);
+    }
+    exit();
+}
+
+void test3()
+{
+    printf(1, "\n\ntest 3 started\n");
+    lock_init(&lock); 
+    counter = 0;
+    int t1 = 1;
+    int t2 = 2;
+    int pid1 = thread_create(&test3_func, &t1, &t1);
+    int pid2 = thread_create(&test3_func, &t2, &t2);
+
+    thread_join(pid1);
+    thread_join(pid2);
+
+    if (counter != 2000)
+    {
+        printf(1, "test 3 failed\n");
+        return;
+    }
+
+    printf(1, "test 3 passed\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -91,7 +133,7 @@ int main(int argc, char *argv[]) {
     // test 3
     // test lock
     // increament a number in two threads and check for final value
-    // test3();
+    test3();
 
     // test 4
     // check fork and thread

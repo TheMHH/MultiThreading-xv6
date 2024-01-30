@@ -112,6 +112,7 @@ memmove(void *vdst, const void *vsrc, int n)
 
 int lock_init(lock_t *lock)
 {
+  // lock = malloc(sizeof(lock_t));
   lock->val = 0;
   return 0;
 }
