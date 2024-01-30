@@ -51,6 +51,8 @@ struct proc {
   char name[16];               // Process name (debugging)
   void *stackptr;
   int is_thread;
+  int id;
+  int par_id;
 };
 
 // Process memory is laid out contiguously, low addresses first:

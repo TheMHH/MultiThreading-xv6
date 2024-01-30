@@ -155,7 +155,8 @@ int test4()
     }
     if (wait() == -1)
     {
-        printf(1, "fork failed");
+        printf(1, "fork failed\n");
+        printf(1, "test 4 failed\n");
         return 0;
     }
     int cnt = 0;
@@ -168,9 +169,10 @@ int test4()
     {
         thread_join(thread_pid[i]);
     }
-    if (cnt > 1)
+    if (cnt == 5)
     {
         printf(1, "scheduler is not fair\n");
+        printf(1, "test 4 failed\n");
         return 0;
     }
     printf(1, "test 4 passed\n");

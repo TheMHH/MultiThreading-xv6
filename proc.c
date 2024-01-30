@@ -75,10 +75,10 @@ allocproc(void)
 {
   struct proc *p;
   char *sp;
-
+  int i = 0;
   acquire(&ptable.lock);
 
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; (p++, i++))
     if(p->state == UNUSED)
       goto found;
 
@@ -89,6 +89,8 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
   p->is_thread = 0;
+  p->par_id = i;
+  p->id = i;
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -332,16 +334,22 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    int thread_run = 0;
+    int thread_run[NPROC] = {0};
+    // int thread_run = 0
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
        
-      if (p->is_thread == 1 && thread_run == 1)
+      if (p->is_thread == 1 && thread_run[p->par_id] == 1)
         continue;
 
       if (p->is_thread)
-        thread_run = 1; 
+        thread_run[p->par_id] = 1; 
+
+      // if (p->is_thread == 1 && thread_run == 1)
+      //   continue;
+      // if (p->is_thread)
+      //   thread_run = 1;
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -579,6 +587,7 @@ clone(void *stack, void (*func)(void *, void *), void *arg1, void *arg2) {
   new_proc->tf->eax = 0; //set eax so fork returns 0 in the child
 
   new_proc->is_thread = 1;
+  new_proc->par_id = p->par_id;
 
   for(int i = 0; i < NOFILE; i++)
     if(p->ofile[i])
@@ -618,6 +627,8 @@ join(int* pid, void **stack)
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
+        p->is_thread = 0;
+        p->par_id = p->id;
         p->state = UNUSED;
         *stack = p->stackptr;
         release(&ptable.lock);
