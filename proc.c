@@ -548,23 +548,23 @@ clone(void *stack, void (*func)(void *, void *), void *arg1, void *arg2) {
   *new_proc->tf = *p->tf;
   new_proc->stackptr = stack;
 
-  uint *sarg1, *sarg2, *sret;
+  uint *arg1_addr, *arg2_addr, *return_addr;
 
 
   new_proc->tf->esp = (uint)stack + PGSIZE; //put end address of new stack end in the stack pointer(ESP)
 
-  sarg2 = (uint *)(new_proc->tf->esp - 1 * sizeof(int *));
-  *sarg2 = (uint)arg2; //second argument to stack
-  new_proc->tf->esp = (uint)sarg2;
+  arg2_addr = (uint *)(new_proc->tf->esp - 1 * sizeof(int *));
+  *arg2_addr = (uint)arg2; //second argument to stack
+  new_proc->tf->esp = (uint)arg2_addr;
 
 
-  sarg1 = (uint *)(new_proc->tf->esp - 1 * sizeof(int *));
-  *sarg1 = (uint)arg1; //push first argument to stack
-  new_proc->tf->esp = (uint)sarg1;
+  arg1_addr = (uint *)(new_proc->tf->esp - 1 * sizeof(int *));
+  *arg1_addr = (uint)arg1; //push first argument to stack
+  new_proc->tf->esp = (uint)arg1_addr;
 
-  sret = (uint *)(new_proc->tf->esp - 1 * sizeof(int *));
-  *sret = 0xFFFFFFF; // push return address to stack
-  new_proc->tf->esp = (uint)sret;
+  return_addr = (uint *)(new_proc->tf->esp - 1 * sizeof(int *));
+  *return_addr = 0xFFFFFFF; // push return address to stack
+  new_proc->tf->esp = (uint)return_addr;
 
 
   new_proc->tf->ebp = new_proc->tf->esp; //set stack pointer to address
