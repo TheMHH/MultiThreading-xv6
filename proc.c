@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+// #include "umalloc.c"
 
 struct {
   struct spinlock lock;
@@ -539,28 +540,34 @@ clone(void *stack, void (*func)(void *, void *), void *arg1, void *arg2) {
   struct proc *new_proc;
   struct proc *p = myproc();
 
-  if((new_proc = allocproc()) == 0) //process allocation
+  if((new_proc = allocproc()) == 0)
     return -1;
 
   new_proc->pgdir = p->pgdir;
   new_proc->sz = p->sz;
   new_proc->parent = p;
   *new_proc->tf = *p->tf;  //copy process data to the new thread
-  
-  void * sarg1, *sarg2, *sret;
+  new_proc->stackptr = stack;
 
-  sret = stack + PGSIZE - 3 * sizeof(void *);
-  *(uint*)sret = 0xFFFFFFF; // push return address to stack
+  uint *sarg1, *sarg2, *sret;
 
-  sarg1 = stack + PGSIZE - 2 * sizeof(void *);
-  *(uint*)sarg1 = (uint)arg1; //push first argument to stack
 
-  sarg2 = stack + PGSIZE - 1 * sizeof(void *);
-  *(uint*)sarg2 = (uint)arg2; //push second argument to stack
+  new_proc->tf->esp = (uint)stack + PGSIZE; //put end address of new stack end in the stack pointer(ESP)
 
-  new_proc->tf->esp = (uint) stack; //put address of new stack in the stack pointer(ESP)
-  new_proc->threadstack = stack; //save address of stack
-  new_proc->tf->esp += PGSIZE - 3 * sizeof(void*);
+  sarg2 = (uint *)(new_proc->tf->esp - 1 * sizeof(int *));
+  *sarg2 = (uint)arg2; //second argument to stack
+  new_proc->tf->esp = (uint)sarg2;
+
+
+  sarg1 = (uint *)(new_proc->tf->esp - 1 * sizeof(int *));
+  *sarg1 = (uint)arg1; //push first argument to stack
+  new_proc->tf->esp = (uint)sarg1;
+
+  sret = (uint *)(new_proc->tf->esp - 1 * sizeof(int *));
+  *sret = 0xFFFFFFF; // push return address to stack
+  new_proc->tf->esp = (uint)sret;
+
+
   new_proc->tf->ebp = new_proc->tf->esp; //set stack pointer to address
   new_proc->tf->eip = (uint) func; //set instruction pointer to function
   new_proc->tf->eax = 0; //set eax so fork returns 0 in the child
@@ -604,9 +611,7 @@ join(int* pid, void **stack)
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
-        stack = p->threadstack;
-        p->threadstack = 0; //reset thread in process table
-
+        // free(p->stackptr);
         release(&ptable.lock);
         return *pid;
       }
