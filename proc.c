@@ -600,7 +600,7 @@ join(int* pid, void **stack)
         continue;//check if a child thread
         
       kids = 1;
-      if(p->parent == procs && p->pid == *pid && p->state == ZOMBIE)
+      if(p->state == ZOMBIE)
       {
         kfree(p->kstack);
         p->kstack = 0;//remove zombie child thread from k_stack

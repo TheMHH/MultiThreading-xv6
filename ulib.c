@@ -137,6 +137,7 @@ int thread_join(int pid)
 {
   void *stackPtr;
   int status = join(&pid, &stackPtr);
-  free(stackPtr);
+  if (status != -1)
+    free(stackPtr);
   return status;
 }
