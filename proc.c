@@ -545,7 +545,7 @@ clone(void *stack, void (*func)(void *, void *), void *arg1, void *arg2) {
   new_proc->pgdir = p->pgdir;
   new_proc->sz = p->sz;
   new_proc->parent = p;
-  *new_proc->tf = *p->tf;  //copy process data to the new thread
+  *new_proc->tf = *p->tf;
   new_proc->stackptr = stack;
 
   uint *sarg1, *sarg2, *sret;
